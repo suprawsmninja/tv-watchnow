@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF000000">
+
+    <!-- Full-bleed art of the focused title, cross-faded between two views. -->
+    <ImageView
+        android:id="@+id/heroA"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:importantForAccessibility="no" />
+
+    <ImageView
+        android:id="@+id/heroB"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:alpha="0"
+        android:importantForAccessibility="no" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/scrim" />
+
+    <LinearLayout
+        android:id="@+id/heroText"
+        android:layout_width="460dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="56dp"
+        android:layout_marginTop="44dp"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/heroService"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:textColor="#FFFFFFFF"
+            android:textSize="12sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="0.08"
+            android:textAllCaps="true" />
+
+        <TextView
+            android:id="@+id/heroTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="#FFFFFFFF"
+            android:textSize="40sp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="-0.02"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:shadowColor="#80000000"
+            android:shadowRadius="12" />
+
+        <TextView
+            android:id="@+id/heroSub"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:textColor="#CCFFFFFF"
+            android:textSize="15sp"
+            android:singleLine="true" />
+
+        <TextView
+            android:id="@+id/heroOverview"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="10dp"
+            android:textColor="#B3FFFFFF"
+            android:textSize="14sp"
+            android:lineSpacingMultiplier="1.15"
+            android:maxLines="3"
+            android:ellipsize="end" />
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/clock"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="36dp"
+        android:layout_marginEnd="48dp"
+        android:textColor="#E6FFFFFF"
+        android:textSize="20sp"
+        android:fontFamily="sans-serif-medium" />
+
+    <TextView
+        android:id="@+id/status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_marginStart="56dp"
+        android:layout_marginBottom="24dp"
+        android:textColor="#99FFFFFF"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <!-- The rows, in the lower part of the screen. The focused row slides to the top of this area. -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/rows"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="262dp"
+        android:clipToPadding="false"
+        android:paddingBottom="200dp"
+        android:descendantFocusability="afterDescendants"
+        android:overScrollMode="never" />
+</FrameLayout>

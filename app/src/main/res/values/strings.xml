@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Watch Now</string>
+    <string name="no_key">Add a TMDB key to see Top 10, new releases and family picks.</string>
+    <string name="loading">Finding what\'s on…</string>
+    <string name="nothing">Nothing to show yet. Check the TV is online.</string>
+    <string name="opening">Opening %1$s: %2$s</string>
+    <string name="not_installed">%1$s isn\'t installed on this TV</string>
+</resources>

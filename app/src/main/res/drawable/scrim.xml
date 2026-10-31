@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Over the hero art: dark down the left for the text, and from the middle down for the rows. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="0" android:startColor="#E6000000" android:centerColor="#66000000" android:endColor="#00000000" />
+        </shape>
+    </item>
+    <item>
+        <shape android:shape="rectangle">
+            <gradient android:angle="270" android:startColor="#00000000" android:centerColor="#99000000" android:endColor="#F2000000" android:centerY="0.55" />
+        </shape>
+    </item>
+</layer-list>
