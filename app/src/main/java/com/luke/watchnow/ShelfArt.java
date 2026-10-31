@@ -34,12 +34,15 @@ final class ShelfArt {
     private static volatile boolean running;
 
     static final class Slide {
-        final String title, file, service;
+        final String title, file, service, logo, meta, pkg;
 
-        Slide(String title, String file, String service) {
+        Slide(String title, String file, String service, String logo, String meta, String pkg) {
             this.title = title;
             this.file = file;
             this.service = service;
+            this.logo = logo;
+            this.meta = meta;
+            this.pkg = pkg;
         }
     }
 
@@ -53,7 +56,7 @@ final class ShelfArt {
     }
 
     private static File index(Context ctx) {
-        return new File(ctx.getFilesDir(), "shelf.json");
+        return new File(ctx.getFilesDir(), "shelf-v2.json");
     }
 
     static boolean stale(Context ctx) {
@@ -105,14 +108,14 @@ final class ShelfArt {
                     if (download(ctx, it) != null) picked.add(it);
                 }
                 if (picked.isEmpty()) continue;
-                out.put(s.pkg, slides(picked, keep));
+                out.put(s.pkg, slides(ctx, tmdb, picked, keep));
                 if (!s.fta) perService.add(picked);
             }
             // Watch Now's tile: the top two of each subscription in turn.
             List<Item> mix = new ArrayList<>();
             for (int i = 0; i < 2; i++) for (List<Item> list : perService) if (list.size() > i) mix.add(list.get(i));
-            if (!mix.isEmpty()) out.put(ctx.getPackageName(), slides(mix, keep));
-            File tmp = new File(ctx.getFilesDir(), "shelf.json.tmp");
+            if (!mix.isEmpty()) out.put(ctx.getPackageName(), slides(ctx, tmdb, mix, keep));
+            File tmp = new File(ctx.getFilesDir(), "shelf-v2.json.tmp");
             try (FileOutputStream o = new FileOutputStream(tmp)) {
                 o.write(out.toString().getBytes(StandardCharsets.UTF_8));
             }
@@ -128,15 +131,43 @@ final class ShelfArt {
         }
     }
 
-    private static JSONArray slides(List<Item> items, Set<String> keep) throws JSONException {
+    private static JSONArray slides(Context ctx, Tmdb tmdb, List<Item> items, Set<String> keep) throws JSONException {
         JSONArray arr = new JSONArray();
         for (Item it : items) {
             String file = fileName(it);
             keep.add(file);
+            String logo = logo(ctx, tmdb, it);
+            if (logo != null) keep.add(logo);
             arr.put(new JSONObject().put("title", it.title).put("file", file)
-                    .put("service", it.service == null ? "" : it.service.name));
+                    .put("service", it.service == null ? "" : it.service.name)
+                    .put("logo", logo == null ? "" : logo).put("meta", it.subtitle)
+                    .put("pkg", it.service == null || it.service.pkg == null ? "" : it.service.pkg));
         }
         return arr;
+    }
+
+    /** The title's logo (a transparent PNG, as Disney+ shows over its art), kept on disk; null when TMDB has none. */
+    private static String logo(Context ctx, Tmdb tmdb, Item it) {
+        String name = "logo_" + (it.tv ? "tv" : "movie") + "_" + it.tmdbId + ".png";
+        File f = new File(dir(ctx), name);
+        if (f.exists() && f.length() > 0) return name;
+        try {
+            String url = tmdb.logo(it.tv, it.tmdbId);
+            if (url == null) return null;
+            HttpURLConnection c = Http.open(url);
+            File tmp = new File(dir(ctx), name + ".part");
+            try (InputStream in = c.getInputStream(); FileOutputStream o = new FileOutputStream(tmp)) {
+                byte[] buf = new byte[16384];
+                int n;
+                while ((n = in.read(buf)) > 0) o.write(buf, 0, n);
+            } finally {
+                c.disconnect();
+            }
+            return tmp.renameTo(f) ? name : null;
+        } catch (IOException | JSONException e) {
+            Log.d(TAG, "logo failed: " + it.title + ": " + e);
+            return null;
+        }
     }
 
     private static String fileName(Item it) {
@@ -175,7 +206,8 @@ final class ShelfArt {
             if (arr == null) return out;
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject s = arr.getJSONObject(i);
-                out.add(new Slide(s.optString("title"), s.optString("file"), s.optString("service")));
+                out.add(new Slide(s.optString("title"), s.optString("file"), s.optString("service"),
+                        s.optString("logo"), s.optString("meta"), s.optString("pkg")));
             }
         } catch (IOException | JSONException e) {
             Log.w(TAG, "shelf index unreadable", e);

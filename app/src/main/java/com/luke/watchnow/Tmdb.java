@@ -139,6 +139,21 @@ final class Tmdb {
         return null;
     }
 
+    /** The English (or language-free) logo for a title, at 500 wide; null when TMDB has none. */
+    String logo(boolean tv, int id) throws IOException, JSONException {
+        JSONArray logos = get("/" + (tv ? "tv" : "movie") + "/" + id + "/images",
+                Map.of("include_image_language", "en,null")).optJSONArray("logos");
+        if (logos == null || logos.length() == 0) return null;
+        JSONObject best = null;
+        for (int i = 0; i < logos.length(); i++) {
+            JSONObject l = logos.getJSONObject(i);
+            if (best == null || "en".equals(l.optString("iso_639_1")) && !"en".equals(best.optString("iso_639_1"))) best = l;
+        }
+        String path = best.optString("file_path", "");
+        // An SVG logo would need a renderer the launcher does not have.
+        return path.isEmpty() || path.endsWith(".svg") ? null : IMG + "w500" + path;
+    }
+
     /** The best TMDB match for a title, for the Netflix Top 10's artwork. */
     Item search(String title, boolean tv) throws IOException, JSONException {
         JSONArray results = get("/search/" + (tv ? "tv" : "movie"), Map.of("query", title, "include_adult", "false"))

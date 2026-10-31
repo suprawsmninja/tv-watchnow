@@ -28,12 +28,13 @@ public final class ShelfProvider extends ContentProvider {
 
     @Override
     public Cursor query(@NonNull Uri uri, String[] projection, String selection, String[] selectionArgs, String sortOrder) {
-        MatrixCursor c = new MatrixCursor(new String[]{"title", "service", "image"});
+        MatrixCursor c = new MatrixCursor(new String[]{"title", "service", "image", "logo", "meta", "package"});
         List<String> path = uri.getPathSegments();
         if (getContext() == null || path.size() != 2 || !"slides".equals(path.get(0))) return c;
         ShelfArt.refreshIfStale(getContext());
         for (ShelfArt.Slide s : ShelfArt.read(getContext(), path.get(1))) {
-            c.addRow(new Object[]{s.title, s.service, "content://" + AUTHORITY + "/img/" + s.file});
+            String base = "content://" + AUTHORITY + "/img/";
+            c.addRow(new Object[]{s.title, s.service, base + s.file, s.logo.isEmpty() ? null : base + s.logo, s.meta, s.pkg});
         }
         return c;
     }
@@ -52,7 +53,8 @@ public final class ShelfProvider extends ContentProvider {
     }
 
     @Override public String getType(@NonNull Uri uri) {
-        return uri.getPathSegments().size() == 2 && "img".equals(uri.getPathSegments().get(0)) ? "image/jpeg" : null;
+        if (uri.getPathSegments().size() != 2 || !"img".equals(uri.getPathSegments().get(0))) return null;
+        return uri.getLastPathSegment().endsWith(".png") ? "image/png" : "image/jpeg";
     }
 
     @Override public Uri insert(@NonNull Uri uri, ContentValues values) {
