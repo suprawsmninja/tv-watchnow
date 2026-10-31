@@ -26,6 +26,8 @@ final class Services {
         /** Free-to-air catch-up: in the family and new rows, not in the subscription Top 10. */
         final boolean fta;
         int providerId;
+        /** TMDB network id, for the service's wordmark (ServiceLogos); 0 when TMDB has none for it. */
+        int networkId;
         String pkg;
 
         Service(String name, String[] tmdbNames, String[] packages, String[] labelWords, int color, boolean fta) {
@@ -61,6 +63,15 @@ final class Services {
                 new String[]{}, new String[]{"9now"}, 0xFF00A6E3, true));
         ALL.add(new Service("10", new String[]{"10 play", "10play", "10"},
                 new String[]{}, new String[]{"10 play", "10play", "10"}, 0xFF0045B5, true));
+    }
+
+    static {
+        String[] names = {"Netflix", "Disney+", "Prime Video", "Apple TV", "Max"};
+        int[] ids = {213, 2739, 1024, 2552, 3186};
+        for (int i = 0; i < names.length; i++) {
+            Service s = byName(names[i]);
+            if (s != null) s.networkId = ids[i];
+        }
     }
 
     private Services() {}
