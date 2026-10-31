@@ -131,8 +131,8 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
             h.rank.setVisibility(row.ranked && it.rank > 0 ? View.VISIBLE : View.GONE);
             h.rank.setText(String.valueOf(it.rank));
             h.title.setText(it.title);
-            h.badge.setVisibility(it.service == null ? View.GONE : View.VISIBLE);
-            if (it.service != null) h.badge.setText(it.service.name);
+            // No badge over the art: the service goes in the line under the selected card, and in the header.
+            h.badge.setVisibility(View.GONE);
             if (it.progress >= 0f) {
                 h.progressTrack.setVisibility(View.VISIBLE);
                 FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) h.progress.getLayoutParams();
@@ -148,7 +148,7 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
             setFrameWidth(h, cover ? POSTER_W : CARD_W, cover ? COVER_H : CARD_H);
             h.title.setVisibility(cover ? View.INVISIBLE : View.VISIBLE);
             if (cover) {
-                h.title.setText(it.subtitle);
+                h.title.setText(it.service == null ? it.subtitle : it.service.name + "  ·  " + it.subtitle);
                 h.wideTitle.setText(it.title);
                 images.load(it.poster, px(POSTER_W), h.image);
             } else if (!it.shuffle) {
