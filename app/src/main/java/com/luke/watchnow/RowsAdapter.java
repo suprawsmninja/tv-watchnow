@@ -27,6 +27,10 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
     interface Listener {
         void onFocused(int row, Item item);
         void onClicked(Item item);
+        /** Held OK on a TMDB title: watched, thumbs up or down. */
+        void onLongPressed(Item item, View card);
+        /** The row's "Surprise Me" tile. */
+        void onShuffle(Feed.Row row);
     }
 
     private final Context ctx;
@@ -136,8 +140,21 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
             } else {
                 h.progressTrack.setVisibility(View.GONE);
             }
-            images.load(it.image, Math.round(CARD_W * dp), h.image);
-            h.frame.setOnClickListener(v -> listener.onClicked(it));
+            if (!it.shuffle) images.load(it.image, Math.round(CARD_W * dp), h.image);
+            h.frame.setOnClickListener(v -> {
+                if (it.shuffle) listener.onShuffle(row);
+                else listener.onClicked(it);
+            });
+            h.frame.setOnLongClickListener(v -> {
+                if (it.shuffle || it.tmdbId == 0) return false;
+                listener.onLongPressed(it, v);
+                return true;
+            });
+            h.shuffleLabel.setVisibility(it.shuffle ? View.VISIBLE : View.GONE);
+            if (it.shuffle) {
+                h.image.setImageResource(R.drawable.shuffle_tile);
+                h.badge.setVisibility(View.GONE);
+            }
             h.frame.setOnFocusChangeListener((v, focused) -> {
                 float s = focused ? 1.1f : 1f;
                 h.itemView.animate().scaleX(s).scaleY(s).translationZ(focused ? px(12) : 0).setDuration(150).start();
@@ -202,6 +219,15 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
         blp.setMargins(px(8), px(8), 0, 0);
         frame.addView(badge, blp);
 
+        TextView shuffleLabel = new TextView(ctx);
+        shuffleLabel.setText("🎰  Surprise Me");
+        shuffleLabel.setTextColor(0xFFFFFFFF);
+        shuffleLabel.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        shuffleLabel.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        shuffleLabel.setGravity(Gravity.CENTER);
+        shuffleLabel.setVisibility(View.GONE);
+        frame.addView(shuffleLabel, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         FrameLayout track = new FrameLayout(ctx);
         track.setBackgroundColor(0x66FFFFFF);
         FrameLayout.LayoutParams tlp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(4), Gravity.BOTTOM);
@@ -220,12 +246,12 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
         tl.topMargin = px(8);
         col.addView(title, tl);
 
-        CardHolder.tags(outer, rank, frame, image, badge, track, bar, title);
+        CardHolder.tags(outer, rank, frame, image, badge, track, bar, title, shuffleLabel);
         return outer;
     }
 
     static final class CardHolder extends RecyclerView.ViewHolder {
-        final TextView rank, badge, title;
+        final TextView rank, badge, title, shuffleLabel;
         final FrameLayout frame, progressTrack;
         final ImageView image;
         final View progress;
@@ -240,6 +266,7 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
             progressTrack = (FrameLayout) t[4];
             progress = (View) t[5];
             title = (TextView) t[6];
+            shuffleLabel = (TextView) t[7];
         }
 
         static void tags(View outer, Object... parts) {

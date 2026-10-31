@@ -77,9 +77,27 @@ final class Feed {
             Future<List<Item>> newTv = pool.submit(() -> merged(tmdb, all, true, Map.of(
                     "sort_by", "popularity.desc", "air_date.gte", Tmdb.daysAgo(30), "air_date.lte", Tmdb.daysAgo(-7),
                     "first_air_date.gte", Tmdb.daysAgo(365))));
-            Future<List<Item>> family = pool.submit(() -> merged(tmdb, all, false, Map.of(
+            // Family Movie Night: kids' films fine for an eight-year-old (G and PG only), half from the last three
+            // years and half well-loved classics from 1980 on, plus films like the ones the family gave a thumbs-up.
+            String threeYearsAgo = Tmdb.daysAgo(3 * 365);
+            Future<List<Item>> familyNew = pool.submit(() -> merged(tmdb, all, false, Map.of(
                     "sort_by", "popularity.desc", "certification_country", "AU", "certification.lte", "PG",
-                    "with_genres", "10751", "vote_average.gte", "6", "vote_count.gte", "50")));
+                    "with_genres", "10751|16", "primary_release_date.gte", threeYearsAgo, "vote_count.gte", "30")));
+            Future<List<Item>> familyClassic = pool.submit(() -> merged(tmdb, all, false, Map.of(
+                    "sort_by", "vote_count.desc", "certification_country", "AU", "certification.lte", "PG",
+                    "with_genres", "10751", "primary_release_date.gte", "1980-01-01",
+                    "primary_release_date.lte", threeYearsAgo, "vote_average.gte", "7", "vote_count.gte", "500")));
+            Future<List<Item>> familyLiked = pool.submit(() -> {
+                List<Item> out = new ArrayList<>();
+                for (int id : first(new Ratings(ctx).likedMovies(), 5)) {
+                    try {
+                        out.addAll(tmdb.familyRecommendations(id, all, 3));
+                    } catch (IOException | JSONException e) {
+                        Log.w(TAG, "recommendations for " + id + " failed", e);
+                    }
+                }
+                return out;
+            });
 
             add(rows, "Top 10 Shows", rank(topTv.get(), 10), true);
             add(rows, "Top 10 Movies", rank(topMovies.get(), 10), true);
@@ -88,7 +106,7 @@ final class Feed {
             fresh.addAll(newMovies.get());
             sortByPopularity(fresh);
             add(rows, "New on Your Services", first(dedupe(fresh), 20), false);
-            add(rows, "Family Movie Night", first(family.get(), 20), false);
+            add(rows, "Family Movie Night", familyMix(ctx, familyLiked.get(), familyNew.get(), familyClassic.get()), false);
         } catch (Exception e) {
             Log.w(TAG, "building rows failed", e);
         } finally {
@@ -96,6 +114,24 @@ final class Feed {
         }
         if (!rows.isEmpty()) save(ctx, rows);
         return rows;
+    }
+
+    /** Liked-alikes first, then new and classic in turn; nothing watched or turned down; 24 at most. */
+    private static List<Item> familyMix(Context ctx, List<Item> liked, List<Item> fresh, List<Item> classic) {
+        Ratings ratings = new Ratings(ctx);
+        List<Item> out = new ArrayList<>(liked);
+        for (int i = 0; i < Math.max(fresh.size(), classic.size()); i++) {
+            if (i < fresh.size()) out.add(fresh.get(i));
+            if (i < classic.size()) out.add(classic.get(i));
+        }
+        out.removeIf(ratings::hidden);
+        return first(dedupe(out), 24);
+    }
+
+    /** Forces the next load to rebuild the online rows, after a thumbs-up changes what Family Movie Night offers. */
+    static void invalidate(Context ctx) {
+        //noinspection ResultOfMethodCallIgnored
+        cacheFile(ctx).setLastModified(0);
     }
 
     private static void add(List<Row> rows, String title, List<Item> items, boolean ranked) {
@@ -175,7 +211,7 @@ final class Feed {
         return out;
     }
 
-    private static List<Item> first(List<Item> items, int n) {
+    private static <T> List<T> first(List<T> items, int n) {
         return new ArrayList<>(items.subList(0, Math.min(n, items.size())));
     }
 

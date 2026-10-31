@@ -36,7 +36,9 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
 
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService work = Executors.newSingleThreadExecutor();
+    private static final String FAMILY = "Family Movie Night";
     private Images images;
+    private Ratings ratings;
     private Tmdb tmdb;
     private RowsAdapter adapter;
     private RecyclerView rowsView;
@@ -73,6 +75,7 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
         rowsView = findViewById(R.id.rows);
 
         images = new Images(this);
+        ratings = new Ratings(this);
         tmdb = new Tmdb(BuildConfig.TMDB_KEY);
         adapter = new RowsAdapter(this, images, this);
         rowsView.setLayoutManager(new RowsLayoutManager(this));
@@ -124,7 +127,13 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
     private void show(Feed.Row continueWatching, List<Feed.Row> online) {
         List<Feed.Row> rows = new ArrayList<>();
         if (!continueWatching.items.isEmpty()) rows.add(continueWatching);
-        rows.addAll(online);
+        for (Feed.Row r : online) {
+            List<Item> items = new ArrayList<>();
+            for (Item it : r.items) if (!ratings.hidden(it)) items.add(it);
+            if (items.isEmpty()) continue;
+            if (r.title.equals(FAMILY) && items.size() >= 3) items.add(shuffleTile());
+            rows.add(new Feed.Row(r.title, items, r.ranked));
+        }
         if (sameRows(rows, adapter.rows())) return;
         boolean hadFocus = rowsView.hasFocus() || adapter.getItemCount() == 0;
         adapter.setRows(rows);
@@ -204,6 +213,62 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
         images.load(uri, getResources().getDisplayMetrics().widthPixels, next);
         next.animate().alpha(1f).setStartDelay(120).setDuration(450).start();
         prev.animate().alpha(0f).setStartDelay(120).setDuration(450).start();
+    }
+
+    // ---- ratings and the slot machine -----------------------------------------------------------
+
+    private static Item shuffleTile() {
+        Item it = new Item();
+        it.shuffle = true;
+        it.title = "Can't decide? Spin for a film";
+        it.subtitle = "Surprise Me";
+        it.overview = "A fruit machine spins through Family Movie Night and lands on one film for tonight.";
+        return it;
+    }
+
+    @Override public void onShuffle(Feed.Row row) {
+        List<Item> films = new ArrayList<>();
+        for (Item it : row.items) if (!it.shuffle) films.add(it);
+        new SlotMachine(this, images, films, this::onClicked).show();
+    }
+
+    /** Hold OK: Watched, thumbs up, thumbs down. Watched and thumbs-down titles leave the rows at once. */
+    @Override public void onLongPressed(Item it, View card) {
+        boolean watched = ratings.watched(it);
+        Ratings.Mark mark = ratings.mark(it);
+        String[] options = {
+                watched ? "✓  Watched (tap to undo)" : "Mark as watched",
+                mark == Ratings.Mark.LIKED ? "👍  Liked (tap to undo)" : "👍  More like this",
+                mark == Ratings.Mark.DISLIKED ? "👎  Not for us (tap to undo)" : "👎  Not for us",
+        };
+        new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+                .setTitle(it.title)
+                .setItems(options, (d, which) -> {
+                    if (which == 0) ratings.setWatched(it, !watched);
+                    if (which == 1) ratings.setMark(it, mark == Ratings.Mark.LIKED ? Ratings.Mark.NONE : Ratings.Mark.LIKED);
+                    if (which == 2) ratings.setMark(it, mark == Ratings.Mark.DISLIKED ? Ratings.Mark.NONE : Ratings.Mark.DISLIKED);
+                    if (ratings.hidden(it)) removeEverywhere(it);
+                    // A thumbs-up changes Family Movie Night: rebuild it next time Watch Now opens.
+                    if (which == 1) Feed.invalidate(getApplicationContext());
+                    Toast.makeText(this, which == 1 && ratings.mark(it) == Ratings.Mark.LIKED
+                            ? "Thanks! More like this next time" : "Got it", Toast.LENGTH_SHORT).show();
+                })
+                .show();
+    }
+
+    private void removeEverywhere(Item gone) {
+        List<Feed.Row> rows = new ArrayList<>();
+        for (Feed.Row r : adapter.rows()) {
+            List<Item> items = new ArrayList<>();
+            for (Item it : r.items) if (!it.key().equals(gone.key())) items.add(it);
+            if (!items.isEmpty()) rows.add(new Feed.Row(r.title, items, r.ranked));
+        }
+        int row = Math.max(0, focusedRow);
+        adapter.setRows(rows);
+        rowsView.post(() -> {
+            RecyclerView.ViewHolder h = rowsView.findViewHolderForAdapterPosition(Math.min(row, rows.size() - 1));
+            if (h != null) h.itemView.requestFocus();
+        });
     }
 
     // ---- opening a title ------------------------------------------------------------------------

@@ -24,8 +24,11 @@ final class Item {
     double popularity;
     int tmdbId;
     boolean tv;
+    /** The "Surprise Me" tile at the end of Family Movie Night. */
+    boolean shuffle;
 
     String key() {
+        if (shuffle) return "shuffle";
         if (tmdbId != 0) return (tv ? "tv:" : "movie:") + tmdbId;
         return (pkg == null ? "" : pkg) + "|" + title;
     }
