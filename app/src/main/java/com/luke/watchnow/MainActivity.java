@@ -246,13 +246,11 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
         boolean watched = ratings.watched(it);
         Ratings.Mark mark = ratings.mark(it);
         String[] options = {
-                watched ? "✓  Watched (tap to undo)" : "Mark as watched",
-                mark == Ratings.Mark.LIKED ? "👍  Liked (tap to undo)" : "👍  More like this",
-                mark == Ratings.Mark.DISLIKED ? "👎  Not for us (tap to undo)" : "👎  Not for us",
+                watched ? "✓  Watched" : "Mark as Watched",
+                mark == Ratings.Mark.LIKED ? "👍  Liked" : "👍  More Like This",
+                mark == Ratings.Mark.DISLIKED ? "👎  Not for Us  ✓" : "👎  Not for Us",
         };
-        new android.app.AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-                .setTitle(it.title)
-                .setItems(options, (d, which) -> {
+        GlassMenu.show(this, it.title, options, which -> {
                     if (which == 0) ratings.setWatched(it, !watched);
                     if (which == 1) ratings.setMark(it, mark == Ratings.Mark.LIKED ? Ratings.Mark.NONE : Ratings.Mark.LIKED);
                     if (which == 2) ratings.setMark(it, mark == Ratings.Mark.DISLIKED ? Ratings.Mark.NONE : Ratings.Mark.DISLIKED);
@@ -261,8 +259,7 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
                     if (which == 1) Feed.invalidate(getApplicationContext());
                     Toast.makeText(this, which == 1 && ratings.mark(it) == Ratings.Mark.LIKED
                             ? "Thanks! More like this next time" : "Got it", Toast.LENGTH_SHORT).show();
-                })
-                .show();
+                });
     }
 
     private void removeEverywhere(Item gone) {
