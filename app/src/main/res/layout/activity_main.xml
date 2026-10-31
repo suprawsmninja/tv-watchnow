@@ -78,7 +78,7 @@
             android:textColor="#B3FFFFFF"
             android:textSize="14sp"
             android:lineSpacingMultiplier="1.15"
-            android:maxLines="3"
+            android:maxLines="2"
             android:ellipsize="end" />
     </LinearLayout>
 

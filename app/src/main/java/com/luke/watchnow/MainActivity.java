@@ -180,6 +180,8 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
 
     private void showHero(Item it) {
         heroTitle.setText(it.title);
+        // A long name drops a size so the name and the overview stay clear of the first row.
+        heroTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, it.title.length() > 24 ? 30 : 40);
         heroSub.setText(it.subtitle);
         heroOverview.setText(it.overview);
         heroService.setVisibility(it.service == null ? View.INVISIBLE : View.VISIBLE);
