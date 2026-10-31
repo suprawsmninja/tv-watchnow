@@ -44,5 +44,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- The launcher's shelf art (ShelfProvider): public backdrops only, read-only. -->
+        <provider
+            android:name=".ShelfProvider"
+            android:authorities="com.luke.watchnow.shelf"
+            android:exported="true" />
     </application>
 </manifest>

@@ -107,6 +107,7 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
             Services.resolve(app);
             Feed.Row cw = Feed.continueWatching(app);
             WatchNext.logPreviewPrograms(app);
+            ShelfArt.refreshIfStale(app);
             List<Feed.Row> cached = Feed.load(app);
             main.post(() -> show(cw, cached));
             if (!Feed.cacheFresh(app) || cached.isEmpty()) {

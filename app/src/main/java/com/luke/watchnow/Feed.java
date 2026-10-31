@@ -117,7 +117,7 @@ final class Feed {
     }
 
     /** This week's Netflix Top 10 TV in Australia. The file is sorted by country, newest week first, so only its start is read. */
-    private static List<Item> netflixTop10(Tmdb tmdb) {
+    static List<Item> netflixTop10(Tmdb tmdb) {
         String[] titles = new String[11];
         String[] week = {null};
         try {
