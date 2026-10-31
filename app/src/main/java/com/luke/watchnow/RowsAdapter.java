@@ -6,6 +6,7 @@ import android.graphics.Typeface;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
@@ -72,7 +73,7 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
         header.setPadding(px(56), 0, 0, px(4));
         row.addView(header);
         RecyclerView list = new RecyclerView(ctx);
-        list.setLayoutManager(new LinearLayoutManager(ctx, LinearLayoutManager.HORIZONTAL, false));
+        list.setLayoutManager(new RowLayoutManager(ctx));
         list.setRecycledViewPool(pool);
         list.setClipToPadding(false);
         list.setClipChildren(false);
@@ -167,7 +168,13 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
                 h.image.setImageResource(R.drawable.shuffle_tile);
                 h.badge.setVisibility(View.GONE);
             }
+            h.frame.setOnKeyListener((v, keyCode, event) -> {
+                if (keyCode != KeyEvent.KEYCODE_DPAD_LEFT && keyCode != KeyEvent.KEYCODE_DPAD_RIGHT) return false;
+                if (event.getAction() == KeyEvent.ACTION_DOWN) step(h, keyCode == KeyEvent.KEYCODE_DPAD_RIGHT ? 1 : -1);
+                return true;
+            });
             h.frame.setOnFocusChangeListener((v, focused) -> {
+                if (focused) parkAtStart(h);
                 if (h.cover) {
                     growTo(h, focused ? WIDE_W : POSTER_W);
                     h.title.setVisibility(focused ? View.VISIBLE : View.INVISIBLE);
@@ -181,6 +188,49 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
                 }
                 if (focused) listener.onFocused(rowIndex, it);
             });
+        }
+    }
+
+    /**
+     * Left/Right move to the next card in this row only (never another row, never wrapping), even when that card is
+     * not laid out yet: a growing cover card leaves the default focus search guessing.
+     */
+    private void step(CardHolder h, int by) {
+        if (!(h.itemView.getParent() instanceof RecyclerView)) return;
+        RecyclerView rv = (RecyclerView) h.itemView.getParent();
+        RecyclerView.Adapter<?> a = rv.getAdapter();
+        int target = h.getBindingAdapterPosition() + by;
+        if (a == null || target < 0 || target >= a.getItemCount()) return;
+        RecyclerView.ViewHolder t = rv.findViewHolderForAdapterPosition(target);
+        if (t instanceof CardHolder) {
+            ((CardHolder) t).frame.requestFocus();
+            return;
+        }
+        rv.scrollToPosition(target);
+        rv.post(() -> {
+            RecyclerView.ViewHolder late = rv.findViewHolderForAdapterPosition(target);
+            if (late instanceof CardHolder) ((CardHolder) late).frame.requestFocus();
+        });
+    }
+
+    /** The focused card sits at the row's left edge, as on Disney+, so a card that grows to the right always fits. */
+    private void parkAtStart(CardHolder h) {
+        if (!(h.itemView.getParent() instanceof RecyclerView)) return;
+        RecyclerView rv = (RecyclerView) h.itemView.getParent();
+        int dx = h.itemView.getLeft() - rv.getPaddingLeft();
+        if (dx != 0) rv.smoothScrollBy(dx, 0);
+    }
+
+    /** A row that scrolls only when parkAtStart says so. */
+    private static final class RowLayoutManager extends LinearLayoutManager {
+        RowLayoutManager(Context ctx) {
+            super(ctx, HORIZONTAL, false);
+        }
+
+        @Override public boolean requestChildRectangleOnScreen(@NonNull RecyclerView parent, @NonNull View child,
+                                                              @NonNull android.graphics.Rect rect, boolean immediate,
+                                                              boolean focusedChildVisible) {
+            return false;
         }
     }
 
