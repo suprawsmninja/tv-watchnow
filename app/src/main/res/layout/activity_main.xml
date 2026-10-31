@@ -33,6 +33,15 @@
         android:layout_marginTop="44dp"
         android:orientation="vertical">
 
+        <!-- The service's own logo (its app banner, as on the dock); the text label below when there is none. -->
+        <ImageView
+            android:id="@+id/heroServiceLogo"
+            android:layout_width="80dp"
+            android:layout_height="45dp"
+            android:scaleType="fitXY"
+            android:visibility="gone"
+            android:importantForAccessibility="no" />
+
         <TextView
             android:id="@+id/heroService"
             android:layout_width="wrap_content"

@@ -45,6 +45,8 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
     private ImageView heroA, heroB;
     private boolean heroAShown = true;
     private String heroUri;
+    private android.widget.ImageView heroServiceLogo;
+    private final java.util.Map<String, android.graphics.drawable.Drawable> banners = new java.util.HashMap<>();
     private TextView heroService, heroTitle, heroSub, heroOverview, clock, status;
     private int focusedRow = -1;
     private Item pendingHero;
@@ -67,6 +69,13 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
         heroA = findViewById(R.id.heroA);
         heroB = findViewById(R.id.heroB);
         heroService = findViewById(R.id.heroService);
+        heroServiceLogo = findViewById(R.id.heroServiceLogo);
+        heroServiceLogo.setOutlineProvider(new android.view.ViewOutlineProvider() {
+            @Override public void getOutline(View view, android.graphics.Outline outline) {
+                outline.setRoundRect(0, 0, view.getWidth(), view.getHeight(), 8 * getResources().getDisplayMetrics().density);
+            }
+        });
+        heroServiceLogo.setClipToOutline(true);
         heroTitle = findViewById(R.id.heroTitle);
         heroSub = findViewById(R.id.heroSub);
         heroOverview = findViewById(R.id.heroOverview);
@@ -188,14 +197,30 @@ public class MainActivity extends Activity implements RowsAdapter.Listener {
         main.postDelayed(showPendingHero, 220);
     }
 
+    /** The app's TV banner (its dock tile), cached; null when the app is missing or has none. */
+    private android.graphics.drawable.Drawable serviceBanner(String pkg) {
+        if (pkg == null) return null;
+        if (banners.containsKey(pkg)) return banners.get(pkg);
+        android.graphics.drawable.Drawable d = null;
+        try {
+            d = getPackageManager().getApplicationBanner(pkg);
+        } catch (android.content.pm.PackageManager.NameNotFoundException ignored) {
+        }
+        banners.put(pkg, d);
+        return d;
+    }
+
     private void showHero(Item it) {
         heroTitle.setText(it.title);
         // A long name drops a size so the name and the overview stay clear of the first row.
         heroTitle.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, it.title.length() > 24 ? 30 : 40);
         heroSub.setText(it.subtitle);
         heroOverview.setText(it.overview);
-        heroService.setVisibility(it.service == null ? View.INVISIBLE : View.VISIBLE);
-        if (it.service != null) {
+        android.graphics.drawable.Drawable logo = serviceBanner(it.service != null && it.service.pkg != null ? it.service.pkg : it.pkg);
+        heroServiceLogo.setImageDrawable(logo);
+        heroServiceLogo.setVisibility(logo != null ? View.VISIBLE : View.GONE);
+        heroService.setVisibility(logo != null ? View.GONE : it.service == null ? View.INVISIBLE : View.VISIBLE);
+        if (logo == null && it.service != null) {
             heroService.setText(it.service.name);
             android.graphics.drawable.GradientDrawable bg = new android.graphics.drawable.GradientDrawable();
             bg.setColor(it.service.color);
