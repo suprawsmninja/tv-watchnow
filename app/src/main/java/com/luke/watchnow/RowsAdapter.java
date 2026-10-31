@@ -82,6 +82,13 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
         int endRoom = ctx.getResources().getDisplayMetrics().widthPixels - px(56) - px(WIDE_W + 90);
         list.setPadding(px(56), px(10), Math.max(px(56), endRoom), px(14));
         list.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        // Cards that have scrolled past the left edge disappear, as on Disney+: the focused card always leads the row.
+        list.addOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override public void onScrolled(@NonNull RecyclerView rv, int dx, int dy) {
+                hidePassed(rv);
+            }
+        });
+        list.addOnLayoutChangeListener((v, l, t, r, b, ol, ot, or, ob) -> hidePassed((RecyclerView) v));
         list.setItemAnimator(null);
         row.addView(list, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         row.setClipChildren(false);
@@ -91,6 +98,9 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
     @Override public void onBindViewHolder(@NonNull RowHolder h, int position) {
         Feed.Row row = rows.get(position);
         h.header.setText(row.title);
+        // Every row's cards line up with the Top 10 cards, which sit just right of their rank numbers.
+        h.list.setPaddingRelative(px(row.ranked ? 56 : 56 + RANK_ROOM), h.list.getPaddingTop(),
+                h.list.getPaddingEnd(), h.list.getPaddingBottom());
         h.list.setAdapter(new CardAdapter(row, position));
     }
 
@@ -223,11 +233,33 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
         });
     }
 
+    /** Where every row's focused picture starts, from the row's left edge. */
+    private int cardX() {
+        return px(56 + RANK_ROOM);
+    }
+
+    /** The picture's left edge inside its card (past the rank number, if any). */
+    private static int frameOffset(CardHolder h) {
+        int x = 0;
+        for (View v = h.frame; v != null && v != h.itemView; v = (View) v.getParent()) x += v.getLeft();
+        return x;
+    }
+
+    private void hidePassed(RecyclerView rv) {
+        int edge = cardX() - px(8);
+        for (int i = 0; i < rv.getChildCount(); i++) {
+            View c = rv.getChildAt(i);
+            float x = c.getX() + c.getWidth();
+            c.setAlpha(x <= edge ? 0f : x < rv.getPaddingLeft() + px(40) && c.getX() < edge ? 0.25f : 1f);
+        }
+    }
+
     /** The focused card sits at the row's left edge, as on Disney+, so a card that grows to the right always fits. */
     private void parkAtStart(CardHolder h) {
         if (!(h.itemView.getParent() instanceof RecyclerView)) return;
         RecyclerView rv = (RecyclerView) h.itemView.getParent();
-        int dx = h.itemView.getLeft() - rv.getPaddingLeft();
+        // The picture, not the rank number in front of it, goes to the same place in every row.
+        int dx = h.itemView.getLeft() + frameOffset(h) - cardX();
         if (dx != 0) rv.smoothScrollBy(dx, 0);
     }
 
@@ -245,6 +277,8 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
     }
 
     static final int CARD_W = 220, CARD_H = 124;
+    /** Room a Top 10 rank number takes in front of its card, in dp. */
+    static final int RANK_ROOM = 34;
     /** Cover cards: poster at rest, wide when focused, the same height either way. */
     static final int COVER_H = 168, POSTER_W = 112, WIDE_W = 299;
 
