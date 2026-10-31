@@ -77,8 +77,10 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
         list.setRecycledViewPool(pool);
         list.setClipToPadding(false);
         list.setClipChildren(false);
-        // Room for the focused card to grow without being clipped.
-        list.setPadding(px(56), px(10), px(56), px(14));
+        // Room for the focused card to grow without being clipped. The wide right padding lets the last card
+        // scroll to the left edge too, so it opens out on screen like the rest.
+        int endRoom = ctx.getResources().getDisplayMetrics().widthPixels - px(56) - px(WIDE_W + 90);
+        list.setPadding(px(56), px(10), Math.max(px(56), endRoom), px(14));
         list.setOverScrollMode(View.OVER_SCROLL_NEVER);
         list.setItemAnimator(null);
         row.addView(list, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
@@ -142,12 +144,16 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
                 h.progressTrack.setVisibility(View.GONE);
             }
             // Cover cards (Disney+ style): a portrait poster at rest, the wide picture and details once focused.
-            boolean cover = it.poster != null && !it.poster.isEmpty() && !it.shuffle;
+            // Surprise Me is a cover card too, so it sits in the row the same way: tall at rest, wide when focused.
+            boolean cover = it.shuffle || it.poster != null && !it.poster.isEmpty();
             h.cover = cover;
             h.wideTitle.setVisibility(View.GONE);
             setFrameWidth(h, cover ? POSTER_W : CARD_W, cover ? COVER_H : CARD_H);
             h.title.setVisibility(cover ? View.INVISIBLE : View.VISIBLE);
-            if (cover) {
+            if (it.shuffle) {
+                h.title.setText(it.title);
+                h.shuffleLabel.setText("🎰\nSurprise\nMe");
+            } else if (cover) {
                 h.title.setText(it.service == null ? it.subtitle : it.service.name + "  ·  " + it.subtitle);
                 h.wideTitle.setText(it.title);
                 images.load(it.poster, px(POSTER_W), h.image);
@@ -179,8 +185,12 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
                     growTo(h, focused ? WIDE_W : POSTER_W);
                     h.title.setVisibility(focused ? View.VISIBLE : View.INVISIBLE);
                     h.title.setTextColor(0xCCFFFFFF);
-                    h.wideTitle.setVisibility(focused ? View.VISIBLE : View.GONE);
-                    images.load(focused ? it.image : it.poster, px(focused ? WIDE_W : POSTER_W), h.image, true);
+                    if (it.shuffle) {
+                        h.shuffleLabel.setText(focused ? "🎰  Surprise Me" : "🎰\nSurprise\nMe");
+                    } else {
+                        h.wideTitle.setVisibility(focused ? View.VISIBLE : View.GONE);
+                        images.load(focused ? it.image : it.poster, px(focused ? WIDE_W : POSTER_W), h.image, true);
+                    }
                 } else {
                     float s = focused ? 1.1f : 1f;
                     h.itemView.animate().scaleX(s).scaleY(s).translationZ(focused ? px(12) : 0).setDuration(150).start();
