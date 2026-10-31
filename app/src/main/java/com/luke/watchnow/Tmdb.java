@@ -164,8 +164,28 @@ final class Tmdb {
         it.backdrop = IMG + "w1280" + backdrop;
         String date = o.optString(tv ? "first_air_date" : "release_date", "");
         String year = date.length() >= 4 ? date.substring(0, 4) : "";
-        it.subtitle = (tv ? "TV" : "Movie") + (year.isEmpty() ? "" : " · " + year);
+        String poster = o.optString("poster_path", "");
+        if (!poster.isEmpty() && !"null".equals(poster)) it.poster = IMG + "w342" + poster;
+        StringBuilder genres = new StringBuilder();
+        JSONArray ids = o.optJSONArray("genre_ids");
+        for (int i = 0; ids != null && i < ids.length() && i < 2; i++) {
+            String g = GENRES.get(ids.optInt(i));
+            if (g != null) genres.append(genres.length() > 0 ? ", " : "").append(g);
+        }
+        it.subtitle = (year.isEmpty() ? (tv ? "TV" : "Movie") : year) + (genres.length() > 0 ? " · " + genres : "");
         return it;
+    }
+
+    /** TMDB's genre ids (movie and TV), for the line under a focused card. */
+    private static final Map<Integer, String> GENRES = new java.util.HashMap<>();
+
+    static {
+        int[] ids = {28, 12, 16, 35, 80, 99, 18, 10751, 14, 36, 27, 10402, 9648, 10749, 878, 53, 10752, 37,
+                10759, 10762, 10763, 10764, 10765, 10766, 10767, 10768};
+        String[] names = {"Action", "Adventure", "Animation", "Comedy", "Crime", "Documentary", "Drama", "Family",
+                "Fantasy", "History", "Horror", "Music", "Mystery", "Romance", "Science Fiction", "Thriller", "War",
+                "Western", "Action & Adventure", "Kids", "News", "Reality", "Sci-Fi & Fantasy", "Soap", "Talk", "Politics"};
+        for (int i = 0; i < ids.length; i++) GENRES.put(ids[i], names[i]);
     }
 
     static String daysAgo(int days) {

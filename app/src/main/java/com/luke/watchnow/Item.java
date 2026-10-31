@@ -10,6 +10,8 @@ final class Item {
     String image;
     /** Full-screen hero art. */
     String backdrop;
+    /** Portrait cover art, shown on a card until it is focused. */
+    String poster;
     /** The streaming service it is on, null if unknown. */
     Services.Service service;
     /** Watch Next: the app's own package and intent. */

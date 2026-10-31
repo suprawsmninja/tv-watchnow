@@ -60,6 +60,11 @@ final class Images {
 
     /** Shows the image in the view once loaded, unless the view was given another one in the meantime. */
     void load(String uri, int widthPx, ImageView view) {
+        load(uri, widthPx, view, false);
+    }
+
+    /** keepCurrent: leave the old picture up until the new one is ready, for a card changing shape. */
+    void load(String uri, int widthPx, ImageView view, boolean keepCurrent) {
         view.setTag(R.id.image_uri, uri);
         if (uri == null || uri.isEmpty()) {
             view.setImageDrawable(null);
@@ -71,7 +76,7 @@ final class Images {
             view.setImageBitmap(hit);
             return;
         }
-        view.setImageDrawable(null);
+        if (!keepCurrent) view.setImageDrawable(null);
         pool.execute(() -> {
             Bitmap bmp = decode(uri, widthPx);
             if (bmp == null) return;

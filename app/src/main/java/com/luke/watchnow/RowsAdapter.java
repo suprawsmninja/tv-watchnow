@@ -140,7 +140,19 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
             } else {
                 h.progressTrack.setVisibility(View.GONE);
             }
-            if (!it.shuffle) images.load(it.image, Math.round(CARD_W * dp), h.image);
+            // Cover cards (Disney+ style): a portrait poster at rest, the wide picture and details once focused.
+            boolean cover = it.poster != null && !it.poster.isEmpty() && !it.shuffle;
+            h.cover = cover;
+            h.wideTitle.setVisibility(View.GONE);
+            setFrameWidth(h, cover ? POSTER_W : CARD_W, cover ? COVER_H : CARD_H);
+            h.title.setVisibility(cover ? View.INVISIBLE : View.VISIBLE);
+            if (cover) {
+                h.title.setText(it.subtitle);
+                h.wideTitle.setText(it.title);
+                images.load(it.poster, px(POSTER_W), h.image);
+            } else if (!it.shuffle) {
+                images.load(it.image, Math.round(CARD_W * dp), h.image);
+            }
             h.frame.setOnClickListener(v -> {
                 if (it.shuffle) listener.onShuffle(row);
                 else listener.onClicked(it);
@@ -156,15 +168,57 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
                 h.badge.setVisibility(View.GONE);
             }
             h.frame.setOnFocusChangeListener((v, focused) -> {
-                float s = focused ? 1.1f : 1f;
-                h.itemView.animate().scaleX(s).scaleY(s).translationZ(focused ? px(12) : 0).setDuration(150).start();
-                h.title.setTextColor(focused ? 0xFFFFFFFF : 0x99FFFFFF);
+                if (h.cover) {
+                    growTo(h, focused ? WIDE_W : POSTER_W);
+                    h.title.setVisibility(focused ? View.VISIBLE : View.INVISIBLE);
+                    h.title.setTextColor(0xCCFFFFFF);
+                    h.wideTitle.setVisibility(focused ? View.VISIBLE : View.GONE);
+                    images.load(focused ? it.image : it.poster, px(focused ? WIDE_W : POSTER_W), h.image, true);
+                } else {
+                    float s = focused ? 1.1f : 1f;
+                    h.itemView.animate().scaleX(s).scaleY(s).translationZ(focused ? px(12) : 0).setDuration(150).start();
+                    h.title.setTextColor(focused ? 0xFFFFFFFF : 0x99FFFFFF);
+                }
                 if (focused) listener.onFocused(rowIndex, it);
             });
         }
     }
 
     static final int CARD_W = 220, CARD_H = 124;
+    /** Cover cards: poster at rest, wide when focused, the same height either way. */
+    static final int COVER_H = 168, POSTER_W = 112, WIDE_W = 299;
+
+    private void setFrameWidth(CardHolder h, int wDp, int hDp) {
+        if (h.grow != null) h.grow.cancel();
+        ViewGroup.LayoutParams lp = h.frame.getLayoutParams();
+        lp.width = px(wDp);
+        lp.height = px(hDp);
+        h.frame.setLayoutParams(lp);
+        ViewGroup.LayoutParams tl = h.title.getLayoutParams();
+        tl.width = px(wDp);
+        h.title.setLayoutParams(tl);
+        h.itemView.setScaleX(1f);
+        h.itemView.setScaleY(1f);
+        h.itemView.setTranslationZ(0);
+    }
+
+    /** Animates the card's width; the row lays out around it as it grows, as Disney+ does. */
+    private void growTo(CardHolder h, int wDp) {
+        if (h.grow != null) h.grow.cancel();
+        ViewGroup.LayoutParams lp = h.frame.getLayoutParams();
+        h.grow = android.animation.ValueAnimator.ofInt(h.frame.getWidth() > 0 ? h.frame.getWidth() : lp.width, px(wDp));
+        h.grow.setDuration(180);
+        h.grow.setInterpolator(new android.view.animation.DecelerateInterpolator());
+        h.grow.addUpdateListener(a -> {
+            lp.width = (int) a.getAnimatedValue();
+            h.frame.setLayoutParams(lp);
+            // The details line follows the card's width, or a poster's column would be as wide as a focused card.
+            ViewGroup.LayoutParams tl = h.title.getLayoutParams();
+            tl.width = lp.width;
+            h.title.setLayoutParams(tl);
+        });
+        h.grow.start();
+    }
 
     private View buildCard() {
         LinearLayout outer = new LinearLayout(ctx);
@@ -219,6 +273,20 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
         blp.setMargins(px(8), px(8), 0, 0);
         frame.addView(badge, blp);
 
+        // The title over the wide picture of a focused cover card, bottom left, as Disney+ puts its logos.
+        TextView wideTitle = new TextView(ctx);
+        wideTitle.setTextColor(0xFFFFFFFF);
+        wideTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
+        wideTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        wideTitle.setShadowLayer(14, 0, 2, 0xE6000000);
+        wideTitle.setMaxLines(2);
+        wideTitle.setEllipsize(TextUtils.TruncateAt.END);
+        wideTitle.setPadding(px(14), px(30), px(14), px(12));
+        wideTitle.setBackground(new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.BOTTOM_TOP, new int[]{0xB3000000, 0x00000000}));
+        wideTitle.setVisibility(View.GONE);
+        frame.addView(wideTitle, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+
         TextView shuffleLabel = new TextView(ctx);
         shuffleLabel.setText("🎰  Surprise Me");
         shuffleLabel.setTextColor(0xFFFFFFFF);
@@ -246,12 +314,14 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
         tl.topMargin = px(8);
         col.addView(title, tl);
 
-        CardHolder.tags(outer, rank, frame, image, badge, track, bar, title, shuffleLabel);
+        CardHolder.tags(outer, rank, frame, image, badge, track, bar, title, shuffleLabel, wideTitle);
         return outer;
     }
 
     static final class CardHolder extends RecyclerView.ViewHolder {
-        final TextView rank, badge, title, shuffleLabel;
+        final TextView rank, badge, title, shuffleLabel, wideTitle;
+        boolean cover;
+        android.animation.ValueAnimator grow;
         final FrameLayout frame, progressTrack;
         final ImageView image;
         final View progress;
@@ -267,6 +337,7 @@ final class RowsAdapter extends RecyclerView.Adapter<RowsAdapter.RowHolder> {
             progress = (View) t[5];
             title = (TextView) t[6];
             shuffleLabel = (TextView) t[7];
+            wideTitle = (TextView) t[8];
         }
 
         static void tags(View outer, Object... parts) {

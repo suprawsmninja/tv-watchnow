@@ -218,7 +218,7 @@ final class Feed {
     // ---- cache ----------------------------------------------------------------------------------
 
     private static File cacheFile(Context ctx) {
-        return new File(ctx.getFilesDir(), "rows.json");
+        return new File(ctx.getFilesDir(), "rows-v2.json");
     }
 
     private static void save(Context ctx, List<Row> rows) {
@@ -229,13 +229,13 @@ final class Feed {
                 JSONArray items = new JSONArray();
                 for (Item it : r.items) {
                     items.put(new JSONObject().put("title", it.title).put("subtitle", it.subtitle)
-                            .put("overview", it.overview).put("image", it.image).put("backdrop", it.backdrop)
+                            .put("overview", it.overview).put("image", it.image).put("backdrop", it.backdrop).put("poster", it.poster == null ? "" : it.poster)
                             .put("service", it.service == null ? "" : it.service.name).put("rank", it.rank)
                             .put("tmdbId", it.tmdbId).put("tv", it.tv));
                 }
                 arr.put(o.put("items", items));
             }
-            File tmp = new File(ctx.getFilesDir(), "rows.json.tmp");
+            File tmp = new File(ctx.getFilesDir(), "rows-v2.json.tmp");
             try (FileOutputStream out = new FileOutputStream(tmp)) {
                 out.write(arr.toString().getBytes(StandardCharsets.UTF_8));
             }
@@ -263,6 +263,8 @@ final class Feed {
                     it.overview = x.optString("overview");
                     it.image = x.optString("image");
                     it.backdrop = x.optString("backdrop");
+                    it.poster = x.optString("poster", "");
+                    if (it.poster.isEmpty()) it.poster = null;
                     it.service = Services.byName(x.optString("service"));
                     it.rank = x.optInt("rank");
                     it.tmdbId = x.optInt("tmdbId");
